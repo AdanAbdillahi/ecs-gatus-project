@@ -21,7 +21,7 @@ endpoints:
       - "[RESPONSE_TIME] < 1000"   # Response time must be under 300ms
   
   - name: homelab                 # Name of your endpoint, can be anything
-    url: "lababdillahi.co.uk/homelab"
+    url: "https://lababdillahi.co.uk/homelab"
     interval: 5m                  # Duration to wait between every status check (default: 60s)
     conditions:
       - "[STATUS] == 200"         # Status must be 200     # The json path "$.status" must be equal to UP
