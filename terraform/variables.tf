@@ -1,0 +1,11 @@
+variable "region" {
+  description = "AWS region for all networking resources"
+  type        = string
+  default     = "eu-west-2"
+}
+
+variable "app_port" {
+  description = "Port the Gatus application listens on"
+  type        = number
+  default     = 8080
+}
