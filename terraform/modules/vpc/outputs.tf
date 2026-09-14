@@ -12,3 +12,6 @@ output "private_subnet_ids" {
   description = "Map of private subnet IDs keyed by AZ"
   value       = { for k, v in aws_subnet.private : k => v.id }
 }
+
+
+

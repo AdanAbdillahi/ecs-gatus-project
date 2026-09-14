@@ -9,3 +9,9 @@ variable "app_port" {
   type        = number
   default     = 8080
 }
+
+variable "domain_name" {
+  description = "Name of the domain"
+  type        = string
+  default     = "adanabdillahi.com"
+}
