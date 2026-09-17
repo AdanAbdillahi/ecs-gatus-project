@@ -53,3 +53,23 @@ module "r53" {
   alb_dns_name = module.alb.dns_name
   alb_zone_id  = module.alb.zone_id
 }
+
+module "ecr" {
+  source      = "./modules/ecr"
+  name_prefix = local.name_prefix
+
+}
+
+module "ecs" {
+  source                = "./modules/ecs"
+  name_prefix           = local.name_prefix
+  app_port              = var.app_port
+  repository_url        = module.ecr.repository_url
+  image_tag             = "latest"
+  region                = var.region
+  private_subnets       = module.vpc.private_subnet_ids
+  ecs_security_group_id = module.sg.ecs_sg_id
+  target_group_arn      = module.alb.target_group_arn
+
+
+}
