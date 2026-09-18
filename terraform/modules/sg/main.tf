@@ -7,6 +7,14 @@ resource "aws_security_group" "alb_sg" {
     Name = "${var.name_prefix}-alb-sg"
   }
 }
+resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
+  security_group_id = aws_security_group.alb_sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
+
 
 resource "aws_vpc_security_group_ingress_rule" "alb_from_internet" {
   security_group_id = aws_security_group.alb_sg.id
@@ -18,10 +26,10 @@ resource "aws_vpc_security_group_ingress_rule" "alb_from_internet" {
 
 resource "aws_vpc_security_group_egress_rule" "alb_all" {
   security_group_id = aws_security_group.alb_sg.id
-  cidr_ipv4          = "0.0.0.0/0"
-  ip_protocol        = "-1"
-  from_port          = 0
-  to_port             = 0
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  from_port         = -1
+  to_port           = -1
 }
 
 resource "aws_security_group" "ecs_sg" {
@@ -35,9 +43,17 @@ resource "aws_security_group" "ecs_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
-  security_group_id = aws_security_group.ecs_sg.id
+  security_group_id            = aws_security_group.ecs_sg.id
   referenced_security_group_id = aws_security_group.alb_sg.id
-  from_port         = var.app_port
-  ip_protocol       = "tcp"
-  to_port           = var.app_port
+  from_port                    = var.app_port
+  ip_protocol                  = "tcp"
+  to_port                      = var.app_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "ecs_all" {
+  security_group_id = aws_security_group.ecs_sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  from_port         = -1
+  to_port           = -1
 }

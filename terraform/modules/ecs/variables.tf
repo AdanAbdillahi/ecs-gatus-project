@@ -1,23 +1,23 @@
 variable "name_prefix" {
-    description = "name of project"
-    type = string
+  description = "name of project"
+  type        = string
 
 }
 
 variable "app_port" {
-    description = "port of gatus applicaiton"
-    type = number
+  description = "port of gatus applicaiton"
+  type        = number
 }
 
 variable "image_tag" {
-    description = "commit SHA tag of the image being deployed"
-    type = string
-    default = "latest"
+  description = "commit SHA tag of the image being deployed"
+  type        = string
+
 }
 
 variable "repository_url" {
-    description = "url of ecr repository to be used in ecs tasks"
-    type = string
+  description = "url of ecr repository to be used in ecs tasks"
+  type        = string
 }
 
 variable "region" {

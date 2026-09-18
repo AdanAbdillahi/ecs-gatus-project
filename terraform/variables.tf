@@ -15,3 +15,8 @@ variable "domain_name" {
   type        = string
   default     = "adanabdillahi.com"
 }
+
+variable "image_tag" {
+  description = "commit SHA tag of the image being deployed"
+  type        = string
+}

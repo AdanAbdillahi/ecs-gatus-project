@@ -65,7 +65,7 @@ module "ecs" {
   name_prefix           = local.name_prefix
   app_port              = var.app_port
   repository_url        = module.ecr.repository_url
-  image_tag             = "latest"
+  image_tag             = var.image_tag
   region                = var.region
   private_subnets       = module.vpc.private_subnet_ids
   ecs_security_group_id = module.sg.ecs_sg_id

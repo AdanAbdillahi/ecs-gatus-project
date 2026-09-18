@@ -20,11 +20,11 @@ variable "vpc_id" {
 
 variable "app_port" {
   description = "Port value for Gatus App"
-  type = number
+  type        = number
 }
 
 
 variable "certificate_arn" {
-description = "ARN of the certificate"
-type = string 
+  description = "ARN of the certificate"
+  type        = string
 }
