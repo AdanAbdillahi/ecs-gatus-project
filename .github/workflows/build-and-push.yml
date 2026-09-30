@@ -1,0 +1,76 @@
+name: Build and Push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "config.yaml"
+      - ".dockerignore"
+      - "gatus"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "config.yaml"
+      - ".dockerignore"
+      - "gatus"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-2
+  ECR_REPOSITORY: 533267395439.dkr.ecr.eu-west-2.amazonaws.com/gatus-ecs-ecr
+  ECS_CLUSTER: gatus-ecs-cluster
+  ECS_SERVICE: gatus-ecs-service
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build image
+        run: docker build -t gatus:${{ github.sha }} .
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: gatus:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Configure AWS credentials via OIDC
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::533267395439:role/gatus-ecs-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag and push image
+        if: github.event_name != 'pull_request'
+        run: |
+          docker tag gatus:${{ github.sha }} $ECR_REPOSITORY:${{ github.sha }}
+          docker tag gatus:${{ github.sha }} $ECR_REPOSITORY:latest
+          docker push $ECR_REPOSITORY:${{ github.sha }}
+          docker push $ECR_REPOSITORY:latest
+
+      - name: Roll out new image
+        if: github.event_name != 'pull_request'
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}

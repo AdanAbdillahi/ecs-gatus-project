@@ -17,12 +17,11 @@ terraform {
 provider "aws" {
   region = var.region
 
-  # Applied to every resource that supports tags, so we don't repeat them.
   default_tags {
     tags = {
       Project   = "ecs-gatus"
       ManagedBy = "terraform"
-      Stack     = "networking"
+      Stack     = "identity"
     }
   }
 }

@@ -65,7 +65,6 @@ module "ecs" {
   name_prefix           = local.name_prefix
   app_port              = var.app_port
   repository_url        = module.ecr.repository_url
-  image_tag             = var.image_tag
   region                = var.region
   private_subnets       = module.vpc.private_subnet_ids
   ecs_security_group_id = module.sg.ecs_sg_id
@@ -73,3 +72,8 @@ module "ecs" {
 
 
 }
+
+# GitHub's OIDC trust + the two CI roles (github_actions, terraform_ci) are
+# NOT managed here - they live in ../identity, a standalone Terraform config
+# with its own state, applied by hand. See identity/main.tf and
+# CONTEXT.md ("Identity split into its own bootstrap config") for why.

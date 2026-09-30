@@ -9,12 +9,6 @@ variable "app_port" {
   type        = number
 }
 
-variable "image_tag" {
-  description = "commit SHA tag of the image being deployed"
-  type        = string
-
-}
-
 variable "repository_url" {
   description = "url of ecr repository to be used in ecs tasks"
   type        = string
