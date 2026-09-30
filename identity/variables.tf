@@ -16,13 +16,9 @@ variable "github_repository" {
   default     = "AdanAbdillahi/ecs-gatus-project"
 }
 
-# GitHub's OIDC "sub" claim is normally "repo:OWNER/REPO:...", but once an
-# owner or repo has ever been renamed, GitHub appends the immutable numeric
-# ID to each segment instead - "repo:OWNER@ownerId/REPO@repoId:..." - so
-# that registering the old, now-available name can't forge the same trust.
-# Confirmed by decoding the actual token in a debug CI run (see README /
-# CONTEXT.md, "OIDC sub claim included immutable IDs"); these two IDs don't
-# change even if the name changes again.
+# GitHub's OIDC sub claim includes immutable owner/repo IDs once either has
+# been renamed - "repo:OWNER@ownerId/REPO@repoId:..." instead of the plain
+# name. These IDs don't change again.
 variable "github_owner_id" {
   description = "Immutable numeric ID behind var.github_repository's owner - from the actual OIDC token's sub claim, not GitHub's UI"
   type        = string

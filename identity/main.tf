@@ -9,13 +9,22 @@ locals {
   ecs_service_arn                 = "arn:aws:ecs:${var.region}:${local.account_id}:service/${var.name_prefix}-cluster/${var.name_prefix}-service"
   ecs_task_definition_arn_pattern = "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/${var.name_prefix}-task:*"
   ecs_execution_role_arn          = "arn:aws:iam::${local.account_id}:role/${var.name_prefix}-ecs-execution-role"
-  cloudwatch_log_group_arn        = "arn:aws:logs:${var.region}:${local.account_id}:log-group:/ecs/${var.name_prefix}:*"
-  state_bucket_arn                = "arn:aws:s3:::${var.tf_state_bucket}"
-  state_object_arn                = "arn:aws:s3:::${var.tf_state_bucket}/networking/terraform.tfstate"
-  route53_zone_arn                = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
+  # CW Logs ARN format is inconsistent - tagging wants the bare ARN,
+  # everything else wants a trailing ":*". Cover both.
+  cloudwatch_log_group_arns = [
+    "arn:aws:logs:${var.region}:${local.account_id}:log-group:/ecs/${var.name_prefix}",
+    "arn:aws:logs:${var.region}:${local.account_id}:log-group:/ecs/${var.name_prefix}:*",
+  ]
+  state_bucket_arn = "arn:aws:s3:::${var.tf_state_bucket}"
+  # Native S3 locking also writes a "<key>.tflock" sibling object - needs
+  # the same permissions as the state file itself.
+  state_object_arns = [
+    "arn:aws:s3:::${var.tf_state_bucket}/networking/terraform.tfstate",
+    "arn:aws:s3:::${var.tf_state_bucket}/networking/terraform.tfstate.tflock",
+  ]
+  route53_zone_arn = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
 
-  # The actual "repo:" segment GitHub puts in the OIDC sub claim - see the
-  # comment on var.github_owner_id for why this isn't just var.github_repository.
+  # Actual "repo:" segment from the OIDC sub claim - see var.github_owner_id
   github_sub_repo = "${split("/", var.github_repository)[0]}@${var.github_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repo_id}"
 }
 
@@ -192,9 +201,9 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
     effect = "Allow"
     actions = [
       "route53:GetHostedZone",
-      "route53:ListHostedZones", "route53:ListHostedZonesByName",
       "route53:ChangeResourceRecordSets",
       "route53:ListResourceRecordSets",
+      "route53:ListTagsForResource",
       "route53:GetChange",
     ]
     resources = [
@@ -204,13 +213,22 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
   }
 
   statement {
+    sid    = "Route53ListZones"
+    effect = "Allow"
+    actions = [
+      "route53:ListHostedZones", "route53:ListHostedZonesByName",
+    ]
+    # List-all-zones calls - Route53 doesn't support scoping to one zone ARN
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "ECS"
     effect = "Allow"
     actions = [
       "ecs:CreateCluster", "ecs:DeleteCluster", "ecs:DescribeClusters",
-      "ecs:PutClusterCapacityProviders",
+      "ecs:PutClusterCapacityProviders", "ecs:DescribeCapacityProviders",
       "ecs:CreateService", "ecs:UpdateService", "ecs:DeleteService", "ecs:DescribeServices",
-      "ecs:RegisterTaskDefinition", "ecs:DeregisterTaskDefinition", "ecs:DescribeTaskDefinition",
       "ecs:TagResource", "ecs:ListTagsForResource",
     ]
     resources = [
@@ -221,9 +239,13 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
   }
 
   statement {
-    sid       = "ECSList"
-    effect    = "Allow"
-    actions   = ["ecs:ListClusters", "ecs:ListServices", "ecs:ListTaskDefinitions"]
+    sid    = "ECSList"
+    effect = "Allow"
+    actions = [
+      "ecs:ListClusters", "ecs:ListServices", "ecs:ListTaskDefinitions",
+      # Task definition actions don't support resource-level ARNs at all
+      "ecs:RegisterTaskDefinition", "ecs:DeregisterTaskDefinition", "ecs:DescribeTaskDefinition",
+    ]
     resources = ["*"]
   }
 
@@ -234,7 +256,7 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
       "ecr:CreateRepository", "ecr:DeleteRepository", "ecr:DescribeRepositories",
       "ecr:PutLifecyclePolicy", "ecr:GetLifecyclePolicy", "ecr:DeleteLifecyclePolicy",
       "ecr:PutImageTagMutability", "ecr:PutImageScanningConfiguration",
-      "ecr:TagResource",
+      "ecr:TagResource", "ecr:ListTagsForResource",
     ]
     resources = [local.ecr_repository_arn]
   }
@@ -242,15 +264,24 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
   statement {
     sid       = "Logs"
     effect    = "Allow"
-    actions   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:PutRetentionPolicy", "logs:TagResource"]
-    resources = [local.cloudwatch_log_group_arn]
+    actions   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:PutRetentionPolicy", "logs:TagResource", "logs:ListTagsForResource"]
+    resources = local.cloudwatch_log_group_arns
+  }
+
+  statement {
+    sid    = "LogsListGroups"
+    effect = "Allow"
+    actions = [
+      "logs:DescribeLogGroups", # account-wide list call, can't scope to one log group ARN
+    ]
+    resources = ["*"]
   }
 
   statement {
     sid       = "TerraformStateObject"
     effect    = "Allow"
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = [local.state_object_arn]
+    resources = local.state_object_arns
   }
 
   statement {

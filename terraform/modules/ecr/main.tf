@@ -2,9 +2,7 @@ resource "aws_ecr_repository" "this" {
   name                 = "${var.name_prefix}-ecr"
   image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
 
-  # SHA tags stay immutable (never overwritten). "latest" is carved out as
-  # the one movable tag so the ECS task definition can reference it without
-  # Terraform needing to know which SHA was last built.
+  # SHA tags stay immutable; "latest" is the one movable tag
   image_tag_mutability_exclusion_filter {
     filter      = "latest"
     filter_type = "WILDCARD"
@@ -21,8 +19,7 @@ resource "aws_ecr_lifecycle_policy" "this" {
   policy = jsonencode({
     rules = [
       {
-        # Evaluated first: claims the "latest" tag so rule 2 never counts it
-        # towards the last-10 limit and can't expire it.
+        # Runs first so rule 2 below never counts/expires this tag
         rulePriority = 1
         description  = "Never expire the latest tag"
         selection = {
@@ -36,8 +33,7 @@ resource "aws_ecr_lifecycle_policy" "this" {
         }
       },
       {
-        # Everything else (the permanent SHA-tagged history) - keep only
-        # the last 10 so storage doesn't grow forever.
+        # Keep last 10 SHA-tagged images
         rulePriority = 2
         description  = "Keep only the last 10 images"
         selection = {

@@ -49,12 +49,7 @@ resource "aws_ecs_task_definition" "this" {
   container_definitions = jsonencode([
     {
       name = "gatus"
-      # Always the movable "latest" tag - see terraform/modules/ecr for the
-      # mutability exclusion filter that allows this one tag to be
-      # overwritten. Deploys happen via `aws ecs update-service
-      # --force-new-deployment` in the build-and-push pipeline, not by
-      # changing this value, so Terraform apply never needs to know which
-      # commit's image is currently running.
+      # Movable "latest" tag - deploys happen via force-new-deployment, not by changing this
       image     = "${var.repository_url}:latest"
       essential = true
       portMappings = [

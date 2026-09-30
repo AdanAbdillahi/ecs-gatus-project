@@ -34,7 +34,7 @@ module "alb" {
 
   name_prefix           = local.name_prefix
   public_subnets        = module.vpc.public_subnet_ids
-  alb_security_group_id = module.sg.alb_sg_id # assuming sg module outputs this
+  alb_security_group_id = module.sg.alb_sg_id
   vpc_id                = module.vpc.vpc_id
   certificate_arn       = module.acm.certificate_arn
   app_port              = var.app_port
@@ -73,7 +73,4 @@ module "ecs" {
 
 }
 
-# GitHub's OIDC trust + the two CI roles (github_actions, terraform_ci) are
-# NOT managed here - they live in ../identity, a standalone Terraform config
-# with its own state, applied by hand. See identity/main.tf and
-# CONTEXT.md ("Identity split into its own bootstrap config") for why.
+# OIDC + CI roles live in ../identity (separate state), not here.
