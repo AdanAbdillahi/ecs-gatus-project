@@ -1,4 +1,3 @@
-# Networking stack.
 locals {
   name_prefix = "gatus-ecs"
 }
@@ -73,4 +72,3 @@ module "ecs" {
 
 }
 
-# OIDC + CI roles live in ../identity (separate state), not here.
