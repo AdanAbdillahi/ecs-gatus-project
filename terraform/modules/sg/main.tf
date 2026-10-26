@@ -8,6 +8,7 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
+  description       = "HTTP from internet (redirected to HTTPS)"
   security_group_id = aws_security_group.alb_sg.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
@@ -17,6 +18,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
 
 
 resource "aws_vpc_security_group_ingress_rule" "alb_from_internet" {
+  description       = "HTTPS from internet"
   security_group_id = aws_security_group.alb_sg.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
@@ -24,12 +26,13 @@ resource "aws_vpc_security_group_ingress_rule" "alb_from_internet" {
   to_port           = 443
 }
 
-resource "aws_vpc_security_group_egress_rule" "alb_all" {
-  security_group_id = aws_security_group.alb_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-  from_port         = -1
-  to_port           = -1
+resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
+  description                  = "App port to ECS tasks"
+  security_group_id            = aws_security_group.alb_sg.id
+  referenced_security_group_id = aws_security_group.ecs_sg.id
+  from_port                    = var.app_port
+  ip_protocol                  = "tcp"
+  to_port                      = var.app_port
 }
 
 resource "aws_security_group" "ecs_sg" {
@@ -43,6 +46,7 @@ resource "aws_security_group" "ecs_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
+  description                  = "App port from ALB"
   security_group_id            = aws_security_group.ecs_sg.id
   referenced_security_group_id = aws_security_group.alb_sg.id
   from_port                    = var.app_port
@@ -50,10 +54,12 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   to_port                      = var.app_port
 }
 
-resource "aws_vpc_security_group_egress_rule" "ecs_all" {
+# ECR/CloudWatch via NAT, plus the HTTPS endpoints in config.yaml
+resource "aws_vpc_security_group_egress_rule" "ecs_https" {
+  description       = "HTTPS out"
   security_group_id = aws_security_group.ecs_sg.id
   cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-  from_port         = -1
-  to_port           = -1
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
 }
