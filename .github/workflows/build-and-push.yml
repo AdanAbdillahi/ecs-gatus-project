@@ -22,6 +22,8 @@ env:
   ECR_REPOSITORY: 533267395439.dkr.ecr.eu-west-2.amazonaws.com/gatus-ecs-ecr
   ECS_CLUSTER: gatus-ecs-cluster
   ECS_SERVICE: gatus-ecs-service
+  ECS_TASK_FAMILY: gatus-ecs-task
+  CONTAINER_NAME: gatus
 
 permissions:
   contents: read
@@ -62,15 +64,30 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           docker tag gatus:${{ github.sha }} $ECR_REPOSITORY:${{ github.sha }}
-          docker tag gatus:${{ github.sha }} $ECR_REPOSITORY:latest
           docker push $ECR_REPOSITORY:${{ github.sha }}
-          docker push $ECR_REPOSITORY:latest
 
-      - name: Roll out new image
+      - name: Get current task definition
         if: github.event_name != 'pull_request'
         run: |
-          aws ecs update-service \
-            --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
-            --force-new-deployment \
-            --region ${{ env.AWS_REGION }}
+          aws ecs describe-task-definition \
+            --task-definition $ECS_TASK_FAMILY \
+            --query taskDefinition > task-definition.json
+
+      - name: Set new image in task definition
+        if: github.event_name != 'pull_request'
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy and wait for stability
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
