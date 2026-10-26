@@ -49,7 +49,7 @@ resource "aws_ecs_task_definition" "this" {
   container_definitions = jsonencode([
     {
       name = "gatus"
-      # Movable "latest" tag - deploys happen via force-new-deployment, not by changing this
+      # Bootstrap image only - the pipeline registers revisions pinned to a SHA tag
       image     = "${var.repository_url}:latest"
       essential = true
       portMappings = [
@@ -89,8 +89,18 @@ resource "aws_ecs_service" "this" {
     container_port   = var.app_port
   }
 
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   depends_on = [
     aws_ecs_cluster_capacity_providers.this,
     aws_iam_role_policy_attachment.execution_role,
   ]
+
+  # The deploy pipeline registers new task definition revisions
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }

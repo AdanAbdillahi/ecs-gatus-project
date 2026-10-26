@@ -98,6 +98,31 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "arn:aws:ecs:${var.aws_region}:${local.account_id}:service/${var.ecs_cluster_name}/${var.ecs_service_name}"
     ]
   }
+
+  # Task definition actions can't be scoped to a resource
+  statement {
+    sid    = "ECSTaskDefinitions"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition",
+    ]
+    resources = ["*"]
+  }
+
+  # Registering a revision hands the execution role to ECS
+  statement {
+    sid       = "PassExecutionRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [local.ecs_execution_role_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["ecs-tasks.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_iam_policy" "github_actions" {
